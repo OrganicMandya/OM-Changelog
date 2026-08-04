@@ -1,0 +1,85 @@
+# Build + deploy the org changelog page (OM-Infra#86).
+# Regenerates public/index.html from every repo's CHANGELOG and publishes to GitHub Pages.
+#
+# Cross-repo read: reading OTHER repos' CHANGELOGs needs a token with org `contents:read`. Per the org
+# model (no GitHub-stored secrets) it's read from the AWS vault via OIDC — same pattern as
+# om-shopify-theme/parity-forward.yml. Store a fine-grained PAT (OrganicMandya repos, Contents: read) at
+# `om/github-changelog-reader-token`, and add THIS repo to the `github-actions-secrets-reader` trust
+# (OM-Infra). Until that's in place the job cleanly falls back to the committed public/index.html — so
+# the page still deploys, it just isn't refreshed.
+name: Build & deploy changelog page
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 12 * * 3" # Wed 12:00 UTC — release-train day
+  repository_dispatch:
+    types: [changelog-refresh] # let cut-release ping this to refresh on a release
+  push:
+    branches: [main]
+    paths: [generate.py, .github/workflows/build-pages.yml, public/**]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Configure AWS credentials (OIDC)
+        id: aws
+        continue-on-error: true # no trust / no vault yet -> fall back to the committed page
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::381492023123:role/github-actions-secrets-reader
+          aws-region: ap-south-1
+
+      - name: Load the changelog reader token from the vault
+        id: token
+        if: steps.aws.outcome == 'success'
+        run: |
+          set -euo pipefail
+          RAW=$(aws secretsmanager get-secret-value --secret-id om/github-changelog-reader-token \
+            --query SecretString --output text 2>/dev/null || true)
+          TOKEN=$(printf '%s' "$RAW" | jq -er 'if type=="object" then (to_entries|.[0].value) else . end' 2>/dev/null) || TOKEN=""
+          [ -z "$TOKEN" ] && TOKEN="$RAW"
+          if [ -n "$TOKEN" ] && [ "$TOKEN" != "None" ]; then
+            echo "::add-mask::$TOKEN"
+            echo "GH_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+            echo "has=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Regenerate the page (fresh from all repos' CHANGELOGs)
+        if: steps.token.outputs.has == 'true'
+        run: python generate.py
+
+      - name: Fallback notice (deploying the committed page)
+        if: steps.token.outputs.has != 'true'
+        run: echo "::warning::No vault reader token — deploying the committed public/index.html unrefreshed. Add om/github-changelog-reader-token + trust this repo on the secrets-reader role to enable auto-refresh."
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
