@@ -83,7 +83,8 @@ def md_inline(s, repo):
     """Minimal, SAFE markdown -> HTML: escape first, then re-introduce a small allowlist."""
     s = html.escape(s)
     s = re.sub(r"`([^`]+)`", r"<code>\1</code>", s)
-    s = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", s)
+    s = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", s)   # bold (allows inner *italics*)
+    s = re.sub(r"(?<![\w*])\*(?!\s)([^*]+?)\*(?![\w*])", r"<em>\1</em>", s)  # *italic*
     s = re.sub(r"\[([^\]]+)\]\((https?://[^)]+)\)", r'<a href="\2">\1</a>', s)
     # cross-repo ref: repo#123
     s = re.sub(r"\b([A-Za-z0-9._-]+)#(\d+)\b",
