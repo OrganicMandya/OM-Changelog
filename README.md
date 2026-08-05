@@ -1,39 +1,59 @@
 # OM-Changelog
 
-The **org-wide changelog page** — one plain-language view of what Organic Mandya ships across every
-surface. Built for OM-Infra#86 (part of the weekly-release-cadence epic, OM-Infra#82).
+The **org-wide changelog page** — one plain-language view of what Organic Mandya ships, for the whole
+team and leadership. Built for OM-Infra#86 (part of the weekly-release-cadence epic, OM-Infra#82), to the
+CTO's approved design.
 
 **Live:** https://changelog.organicmandya.club
 
 ## What it is
-`generate.py` aggregates every repo's `CHANGELOG.md` into a single categorized page:
+`generate.py` renders the curated entries in **`content.json`** into a single static `public/index.html`
+that matches the approved design:
 
-- **Surfaces:** 📱 App · 🛍️ Website · 📊 Staff tools · 📦 Stock & platform
-- **Status:** **Shipped** (a repo's dated `[x.y.z]` sections) vs **In testing** (its `[Unreleased]`)
-- Plain-language **headlines** (the bold lead of each changelog entry), with auto-linked ticket refs
+- **Hero** + a sticky **surface filter** (All / 📱 App / 🌐 Website / 📊 Staff tools / ⚙️ Stock & platform) — client-side, no framework.
+- Updates grouped by **IN TESTING NOW** → **SHIPPED — this week** → **EARLIER** (by date).
+- Per-card **surface + status badges**, an optional **"Why it matters"** line, and a small **REF** chip.
 
-Output is a single static `public/index.html` — no framework, no build step.
+No build step, no dependencies — one self-contained HTML file.
 
-## How it's hosted
-GitHub Pages (source: GitHub Actions). `.github/workflows/build-pages.yml` regenerates the page and
-deploys it:
-- **weekly** (Wed 12:00 UTC — release-train day), on **manual dispatch**, and on a **`changelog-refresh`**
-  repository-dispatch (so the cut-release workflow can refresh it on a release).
-- The committed `public/index.html` is always deployable, so the page is live even if a refresh is skipped.
+## The content model — `content.json`
+The page reads from `content.json`, **not** from repo CHANGELOGs — because the design's voice is
+**plain-language, non-technical** ("Test notifications kept away from real customers"), which a raw
+changelog can't produce. Each entry:
+
+```json
+{
+  "surface": "app | website | staff-tools | stock-platform",
+  "status":  "in-testing | shipped",
+  "date":    "2026-08-06",
+  "title":   "Short, human headline — no jargon",
+  "body":    "1–2 plain sentences a non-engineer understands.",
+  "why":     "(optional) one line on why it matters to the business",
+  "ref":     "OM-Mobile-App#133"
+}
+```
+
+**Voice guide:** write for a store manager or the founder, not an engineer. Say what changed and why it
+helps; avoid repo/tooling terms. `why` only on high-impact items. `in-testing` = merged, being verified;
+`shipped` = live. `ref` is `repo#number` (issue or PR) and auto-links.
+
+### Keeping it fresh
+- **Now (curated):** each Wednesday, edit `content.json` — add the week's changes in plain language, and
+  flip items from `in-testing` to `shipped`. Merge → the page rebuilds.
+- **Planned (assisted):** an optional helper that drafts `content.json` entries from the week's merged PRs
+  (LLM rewrite) for a human to approve — makes the weekly update near-hands-off. Tracked on OM-Infra#86.
+
+## Hosting
+GitHub Pages (source: GitHub Actions). `build-pages.yml` renders + deploys on **push** to
+`content.json`/`generate.py`, **weekly** (Wed — re-groups by date), and on **dispatch**.
 
 ## Run it locally
 ```bash
-gh auth status            # needs read access to the org repos
-python generate.py        # writes public/index.html
-open public/index.html
+python generate.py    # reads content.json -> writes public/index.html
+# open public/index.html
 ```
 
-## Owner setup (one-time, to enable auto-refresh + the domain)
-1. **DNS** — add a GoDaddy CNAME: `changelog` → `<org>.github.io` (the `.club` zone is at GoDaddy).
-2. **Pages** — Settings → Pages → Source: **GitHub Actions**; custom domain `changelog.organicmandya.club`.
-3. **Cross-repo read** (for scheduled auto-refresh) — store a fine-grained PAT (OrganicMandya, Contents:read)
-   at `om/github-changelog-reader-token`, and add this repo to the `github-actions-secrets-reader` trust
-   (OM-Infra). Until then the page deploys the committed snapshot (no auto-refresh).
-
-## Config
-Surfaces / repo mapping and the per-repo caps live at the top of [`generate.py`](generate.py).
+## Owner setup (one-time)
+1. **Rename default branch `master` → `main`** (org-admin) — created via `git init` (default `master`).
+2. **DNS** — GoDaddy CNAME `changelog` → `organicmandya.github.io`.
+3. **Pages custom domain** — Settings → Pages → `changelog.organicmandya.club` (after DNS).

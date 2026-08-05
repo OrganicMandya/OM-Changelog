@@ -1,185 +1,228 @@
 #!/usr/bin/env python3
 """Org changelog page generator (OM-Infra#86).
 
-Aggregates each repo's CHANGELOG.md into one plain-language, categorized page:
-  - categorized by surface (App / Website / Staff tools / Stock & platform)
-  - Shipped (dated [x.y.z] sections) vs In-testing ([Unreleased])
-  - small ticket refs, auto-linked
+Renders the curated, plain-language entries in content.json into one static page that matches the
+approved design: a dark, green hero; a sticky surface filter (client-side); updates grouped by
+IN TESTING NOW / SHIPPED THIS WEEK / EARLIER; per-card surface + status badges, an optional
+"Why it matters" line, and a REF chip. Writes public/index.html — no framework, one self-contained file.
 
-Reads via `gh api` so it runs the same locally and in CI. Writes public/index.html.
+Content voice lives in content.json (see README). This generator only lays it out.
+Env: AS_OF (YYYY-MM-DD, defaults today), ANCHOR (YYYY-MM-DD start of "this week"; defaults last Tuesday).
 """
-import subprocess, json, re, html, sys, datetime, os
+import json, re, html, os, datetime
 
 OWNER = "OrganicMandya"
 
-# surface -> (emoji label, [repos]). Order is the page order.
-SURFACES = [
-    ("App",              "\U0001F4F1", ["OM-Mobile-App"]),
-    ("Website",          "\U0001F6CD",  ["OM-Storefront", "om-shopify-theme"]),
-    ("Staff tools",      "\U0001F4CA", ["OM-Insights", "OM-Category-Dashboard"]),
-    ("Stock & platform", "\U0001F4E6", ["OM-Infra", "odoo-sync"]),
-]
-MAX_SHIPPED_VERSIONS = 5   # per repo, most recent first
-MAX_TESTING = 8            # per repo: recent In-testing headlines (rest summarised as "+N more")
+SURFACE = {
+    "app":            {"label": "App",              "badge": "APP",              "emoji": "\U0001F4F1", "color": "#59b877"},
+    "website":        {"label": "Website",          "badge": "WEBSITE",          "emoji": "\U0001F310", "color": "#5aa0e0"},
+    "staff-tools":    {"label": "Staff tools",      "badge": "STAFF TOOLS",      "emoji": "\U0001F4CA", "color": "#a67fe0"},
+    "stock-platform": {"label": "Stock & platform", "badge": "STOCK & PLATFORM", "emoji": "⚙️", "color": "#d7a24b"},
+}
+STATUS = {
+    "in-testing": {"label": "IN TESTING", "color": "#d7a24b"},
+    "shipped":    {"label": "SHIPPED",    "color": "#59b877"},
+}
 
-def gh_json(path):
-    out = subprocess.run(["gh", "api", path], capture_output=True, text=True,
-                         encoding="utf-8", errors="replace")
-    if out.returncode != 0:
-        return None
-    return json.loads(out.stdout)
+def d(s):
+    return datetime.date.fromisoformat(s)
 
-def fetch_changelog(repo):
-    data = gh_json(f"repos/{OWNER}/{repo}/contents/CHANGELOG.md")
-    if not data or "content" not in data:
-        return None
-    import base64
-    return base64.b64decode(data["content"]).decode("utf-8", "replace")
+def fmt_date(dt):
+    return f"{dt.day} {dt:%b %Y}"
 
-VER_RE = re.compile(r"^##\s*\[(?P<ver>[^\]]+)\]\s*(?:-\s*(?P<date>\d{4}-\d{2}-\d{2}))?")
-SUB_RE = re.compile(r"^###\s+(?P<name>.+?)\s*$")
-BULLET_RE = re.compile(r"^\s*-\s+(?P<text>.*)$")
-
-def parse_changelog(text):
-    """Return list of sections: {ver, date, groups: [{name, bullets:[md]}]}."""
-    sections, cur, curgroup = [], None, None
-    for raw in text.splitlines():
-        m = VER_RE.match(raw)
-        if m:
-            cur = {"ver": m.group("ver").strip(), "date": m.group("date"), "groups": []}
-            sections.append(cur); curgroup = None
-            continue
-        if cur is None:
-            continue
-        sm = SUB_RE.match(raw)
-        if sm:
-            curgroup = {"name": sm.group("name").strip(), "bullets": []}
-            cur["groups"].append(curgroup); continue
-        bm = BULLET_RE.match(raw)
-        if bm:
-            if curgroup is None:
-                curgroup = {"name": None, "bullets": []}; cur["groups"].append(curgroup)
-            curgroup["bullets"].append(bm.group("text").rstrip())
-        elif raw.strip() and curgroup and curgroup["bullets"]:
-            # continuation of the previous wrapped bullet line
-            curgroup["bullets"][-1] += " " + raw.strip()
-    return sections
-
-def summarize(b):
-    """Plain-language headline for a technical changelog bullet: the leading **bold** lead, else
-    the first sentence — with the trailing ticket ref preserved."""
-    m = re.match(r"\*\*(.+?)\*\*", b)
-    if m:
-        head = m.group(1).strip().rstrip(".")
-    else:
-        head = re.split(r"(?<=[.!?])\s", b, maxsplit=1)[0]
-        head = re.split(r"\s[—-]\s", head, maxsplit=1)[0].strip()
-    refs = re.findall(r"\(([^)]*#\d+[^)]*)\)", b)
-    if refs and "#" not in head:
-        head += f" ({refs[-1]})"
-    return f"**{head}**" if m else head
-
-def md_inline(s, repo):
-    """Minimal, SAFE markdown -> HTML: escape first, then re-introduce a small allowlist."""
+def linkify(s):
     s = html.escape(s)
-    s = re.sub(r"`([^`]+)`", r"<code>\1</code>", s)
-    s = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", s)   # bold (allows inner *italics*)
-    s = re.sub(r"(?<![\w*])\*(?!\s)([^*]+?)\*(?![\w*])", r"<em>\1</em>", s)  # *italic*
-    s = re.sub(r"\[([^\]]+)\]\((https?://[^)]+)\)", r'<a href="\2">\1</a>', s)
-    # cross-repo ref: repo#123
-    s = re.sub(r"\b([A-Za-z0-9._-]+)#(\d+)\b",
-               rf'<a href="https://github.com/{OWNER}/\1/issues/\2">\1#\2</a>', s)
-    # bare #123 -> this repo (avoid matching inside an href we just built)
-    s = re.sub(r"(^|[\s(])#(\d+)\b",
-               rf'\1<a href="https://github.com/{OWNER}/{repo}/issues/\2">#\2</a>', s)
+    s = re.sub(r'\b((?:[a-z0-9-]+\.)+(?:club|com|shop|dev|in)(?:/[^\s<]*)?)',
+               r'<a href="https://\1" target="_blank" rel="noopener">\1</a>', s)
     return s
 
-def render():
-    built = os.environ.get("BUILD_DATE") or datetime.date.today().isoformat()
-    cards = []
-    for label, emoji, repos in SURFACES:
-        repo_blocks = []
-        for repo in repos:
-            text = fetch_changelog(repo)
-            if not text:
-                continue
-            secs = parse_changelog(text)
-            unreleased = next((s for s in secs if s["ver"].lower() == "unreleased"), None)
-            shipped = [s for s in secs if s["ver"].lower() != "unreleased" and s["date"]][:MAX_SHIPPED_VERSIONS]
-            if not (unreleased and any(g["bullets"] for g in unreleased["groups"])) and not shipped:
-                continue
-            groups_html = []
-            if unreleased and any(g["bullets"] for g in unreleased["groups"]):
-                groups_html.append(render_release(repo, "In testing", None, unreleased["groups"], "testing"))
-            for s in shipped:
-                groups_html.append(render_release(repo, s["ver"], s["date"], s["groups"], "shipped"))
-            repo_blocks.append(
-                f'<div class="repo"><h3 class="repo-name">{html.escape(repo)}</h3>{"".join(groups_html)}</div>')
-        if repo_blocks:
-            cards.append(f'<section class="surface"><h2>{emoji} {html.escape(label)}</h2>{"".join(repo_blocks)}</section>')
-    return PAGE.format(surfaces="\n".join(cards), built=built)
-
-def render_release(repo, title, date, groups, kind):
-    badge = '<span class="badge shipped">Shipped</span>' if kind == "shipped" \
-            else '<span class="badge testing">In testing</span>'
-    ver = f'<span class="ver">{html.escape(title)}</span>'
-    when = f'<span class="date">{html.escape(date)}</span>' if date else ""
-    bullets = [b for g in groups for b in g["bullets"]]
-    extra = 0
-    if kind == "testing" and len(bullets) > MAX_TESTING:
-        extra = len(bullets) - MAX_TESTING
-        bullets = bullets[:MAX_TESTING]
-    items = [f"<li>{md_inline(summarize(b), repo)}</li>" for b in bullets]
-    if not items:
+def ref_chip(ref):
+    m = re.match(r"([A-Za-z0-9._-]+)#(\d+)", ref or "")
+    if not m:
         return ""
-    if extra:
-        items.append(f'<li class="more">+{extra} more in this cycle</li>')
-    return (f'<div class="release"><div class="rel-head">{badge}{ver}{when}</div>'
-            f'<ul class="entries">{"".join(items)}</ul></div>')
+    repo, num = m.group(1), m.group(2)
+    url = f"https://github.com/{OWNER}/{repo}/issues/{num}"
+    return (f'<div class="ref"><span class="ref-lbl">REF</span>'
+            f'<a class="ref-chip" href="{url}" target="_blank" rel="noopener">{html.escape(repo)} #{num}</a></div>')
 
-PAGE = """<!doctype html>
+def card(e):
+    s = SURFACE.get(e["surface"], {"label": e["surface"], "badge": e["surface"].upper(), "emoji": "", "color": "#59b877"})
+    st = STATUS.get(e["status"], {"label": e["status"].upper(), "color": "#59b877"})
+    when = "This week" if e["status"] == "in-testing" else fmt_date(d(e["date"]))
+    why = ""
+    if e.get("why"):
+        why = (f'<div class="why"><span class="why-lbl">Why it matters</span> {linkify(e["why"])}</div>')
+    return f"""<article class="card" data-surface="{e['surface']}" style="--sc:{s['color']};--stc:{st['color']}">
+      <div class="chead">
+        <div class="badges">
+          <span class="badge surface">{s['emoji']} {html.escape(s['badge'])}</span>
+          <span class="badge status"><span class="dot"></span>{st['label']}</span>
+        </div>
+        <span class="when">{html.escape(when)}</span>
+      </div>
+      <h3 class="ctitle">{html.escape(e['title'])}</h3>
+      <p class="cbody">{linkify(e['body'])}</p>
+      {why}
+      {ref_chip(e.get('ref',''))}
+    </article>"""
+
+def section(title, entries):
+    if not entries:
+        return ""
+    cards = "\n".join(card(e) for e in entries)
+    return f'<section class="group"><h2 class="section">{title}</h2>{cards}</section>'
+
+def build():
+    data = json.load(open(os.path.join(os.path.dirname(__file__) or ".", "content.json"), encoding="utf-8"))
+    entries = data["entries"]
+    as_of = d(os.environ["AS_OF"]) if os.environ.get("AS_OF") else datetime.date.today()
+    if os.environ.get("ANCHOR"):
+        anchor = d(os.environ["ANCHOR"])
+    else:
+        anchor = as_of - datetime.timedelta(days=(as_of.weekday() - 1) % 7)  # most recent Tuesday
+
+    in_testing = [e for e in entries if e["status"] == "in-testing"]
+    shipped = [e for e in entries if e["status"] == "shipped"]
+    this_week = sorted([e for e in shipped if d(e["date"]) >= anchor], key=lambda e: e["date"], reverse=True)
+    earlier   = sorted([e for e in shipped if d(e["date"]) <  anchor], key=lambda e: e["date"], reverse=True)
+
+    wk = f"WEEK OF {anchor.day} {anchor:%B %Y}".upper()
+    body = "\n".join([
+        section('<span class="ico">✏️</span> IN TESTING NOW <span class="muted">— HELP US CHECK THESE</span>', in_testing),
+        section(f'<span class="ico">✅</span> SHIPPED <span class="muted">— {wk}</span>', this_week),
+        section('EARLIER', earlier),
+    ])
+
+    tabs = ['<button class="tab active" data-filter="all">All updates</button>']
+    for key, s in SURFACE.items():
+        tabs.append(f'<button class="tab" data-filter="{key}"><span class="tdot" style="background:{s["color"]}"></span>{s["emoji"]} {html.escape(s["label"])}</button>')
+    tabs_html = "\n".join(tabs)
+
+    built = os.environ.get("BUILD_DATE") or as_of.isoformat()
+    return HEAD + STYLE + BODY.format(tabs=tabs_html, body=body, built=built) + SCRIPT + "</body></html>\n"
+
+HEAD = """<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Organic Mandya — What we're shipping</title>
-<style>
-:root{{--bg:#f7f6f3;--card:#fff;--ink:#1c2b23;--mut:#5c6b62;--line:#e6e3dc;--green:#2e7d4f;--amber:#b5791f;--accent:#2e7d4f}}
-*{{box-sizing:border-box}}
-body{{margin:0;font:16px/1.55 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg)}}
-.wrap{{max-width:900px;margin:0 auto;padding:32px 20px 64px}}
-header.top{{padding:8px 0 24px;border-bottom:2px solid var(--accent);margin-bottom:28px}}
-header.top h1{{margin:0 0 6px;font-size:28px}}
-header.top p{{margin:0;color:var(--mut)}}
-.surface{{margin:34px 0}}
-.surface>h2{{font-size:20px;margin:0 0 14px;padding-bottom:6px;border-bottom:1px solid var(--line)}}
-.repo{{margin:0 0 18px}}
-.repo-name{{font-size:13px;letter-spacing:.02em;text-transform:uppercase;color:var(--mut);margin:14px 0 8px}}
-.release{{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:0 0 10px}}
-.rel-head{{display:flex;align-items:center;gap:10px;margin-bottom:8px}}
-.badge{{font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;color:#fff}}
-.badge.shipped{{background:var(--green)}}
-.badge.testing{{background:var(--amber)}}
-.ver{{font-weight:700}}
-.date{{color:var(--mut);font-size:13px;margin-left:auto}}
-ul.entries{{margin:0;padding:0;list-style:none}}
-ul.entries li{{padding:6px 0;border-top:1px dashed var(--line)}}
-ul.entries li:first-child{{border-top:none}}
-.gtag{{display:inline-block;font-size:11px;font-weight:600;color:var(--accent);background:#eaf3ed;border-radius:6px;padding:1px 7px;margin-right:8px;vertical-align:1px}}
-a{{color:var(--accent)}}
-code{{background:#eee;border-radius:4px;padding:0 4px;font-size:.9em}}
-footer{{margin-top:40px;color:var(--mut);font-size:13px;text-align:center}}
-</style></head>
-<body><div class="wrap">
-<header class="top">
-  <h1>Organic Mandya — What we're shipping</h1>
-  <p>A plain-language view of what changed across our products. <strong>Shipped</strong> = released; <strong>In testing</strong> = merged, verifying on staging.</p>
-</header>
-{surfaces}
-<footer>Generated {built} · sourced from each repo's CHANGELOG · OM-Infra#86</footer>
-</div></body></html>
+<title>Organic Mandya — What we shipped</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet">
+"""
+
+STYLE = """<style>
+:root{
+  --bg:#0a0f0c; --card:#0f1712; --line:#1f2c24; --line2:#26332b;
+  --ink:#eef3ee; --mut:#9cb2a6; --dim:#7d9488; --green:#59b877;
+  --wrap:920px;
+}
+*{box-sizing:border-box} html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:var(--wrap);margin:0 auto;padding:0 22px}
+a{color:var(--green);text-decoration:none} a:hover{text-decoration:underline}
+h1,h2,h3{font-family:"Fraunces",Georgia,"Times New Roman",serif;font-weight:500;margin:0}
+
+/* hero */
+.hero{background:radial-gradient(120% 140% at 22% -20%,rgba(46,120,80,.45) 0,transparent 55%),linear-gradient(160deg,#0e3f2c 0%,#0b2b1f 42%,#081410 100%);
+  border-bottom:1px solid #10221a}
+.hero .wrap{padding:34px 22px 40px}
+.brand{display:flex;align-items:center;gap:9px;color:#dfeee6;font-weight:600;font-size:16px}
+.brand .leaf{color:var(--green);font-size:20px}
+.hero h1{font-size:clamp(40px,7vw,68px);line-height:1.03;letter-spacing:-.01em;margin:18px 0 16px;color:#f4f8f4}
+.hero p{max-width:540px;color:#bcd2c5;font-size:18px;margin:0 0 22px}
+.pill{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
+  color:#9fe0b8;background:rgba(89,184,119,.10);border:1px solid rgba(89,184,119,.28);padding:8px 14px;border-radius:999px}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px rgba(89,184,119,.7)}
+
+/* sticky filter */
+.filterbar{position:sticky;top:0;z-index:20;background:rgba(10,15,12,.86);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.tabs{display:flex;flex-wrap:wrap;gap:9px;padding:12px 22px}
+.tab{display:inline-flex;align-items:center;gap:7px;cursor:pointer;font:inherit;font-size:14px;font-weight:500;
+  color:#cfe0d5;background:#12201a;border:1px solid var(--line2);padding:7px 14px;border-radius:999px;transition:.15s}
+.tab:hover{border-color:#33463b}
+.tab.active{background:#123b28;border-color:#2f6a48;color:#eafaf0}
+.tdot{width:8px;height:8px;border-radius:50%}
+
+/* sections */
+main{padding:26px 0 8px}
+.group{margin:26px 0}
+.section{display:flex;align-items:center;gap:10px;font-family:inherit;font-size:13px;font-weight:600;letter-spacing:.11em;
+  text-transform:uppercase;color:#8fae9d;margin:0 0 14px}
+.section::after{content:"";flex:1;height:1px;background:var(--line)}
+.section .ico{font-size:15px}.section .muted{color:var(--dim);font-weight:600}
+
+/* card */
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:0 0 14px}
+.chead{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+.badges{display:flex;gap:8px;flex-wrap:wrap}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.06em;
+  padding:3px 9px;border-radius:7px;text-transform:uppercase}
+.badge.surface{color:var(--sc);background:color-mix(in srgb,var(--sc) 16%,transparent);border:1px solid color-mix(in srgb,var(--sc) 30%,transparent)}
+.badge.status{color:var(--stc);background:color-mix(in srgb,var(--stc) 13%,transparent)}
+.badge.status .dot{width:6px;height:6px;border-radius:50%;background:var(--stc)}
+.when{margin-left:auto;color:var(--dim);font-size:13px;white-space:nowrap}
+.ctitle{font-size:21px;font-weight:600;color:#f2f7f2;margin:2px 0 8px;letter-spacing:-.005em}
+.cbody{color:#a9bfb2;margin:0;font-size:15.5px}
+.why{margin-top:12px;padding-top:11px;border-top:1px dashed var(--line2);color:#9db3a6;font-size:14.5px}
+.why-lbl{color:var(--green);font-weight:700}
+.ref{display:flex;align-items:center;gap:9px;margin-top:13px}
+.ref-lbl{color:var(--dim);font-size:11px;font-weight:700;letter-spacing:.08em}
+.ref-chip{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;color:#c3d5c9;
+  background:#0b1410;border:1px solid var(--line2);padding:3px 9px;border-radius:6px}
+.ref-chip:hover{text-decoration:none;border-color:#39513f}
+
+/* footer */
+footer{border-top:1px solid var(--line);margin-top:26px}
+footer .wrap{padding:22px 22px 60px;color:var(--dim);font-size:14px}
+footer p{margin:0 0 10px} footer .b{color:#c3d5c9;font-weight:600}
+.s-test{color:#d7a24b;font-weight:700}.s-ship{color:var(--green);font-weight:700}
+@media(max-width:560px){.hero h1{font-size:40px}.when{display:none}}
+</style>
+"""
+
+BODY = """</head><body>
+<header class="hero"><div class="wrap">
+  <div class="brand"><span class="leaf">\U0001F343</span> Organic Mandya</div>
+  <h1>What we shipped</h1>
+  <p>A plain-language record of every improvement we make to the app, website, and staff tools — so the whole team and leadership can follow along.</p>
+  <span class="pill"><span class="dot"></span> Updated every Wednesday</span>
+</div></header>
+
+<div class="filterbar"><div class="wrap tabs">
+{tabs}
+</div></div>
+
+<main class="wrap">
+{body}
+</main>
+
+<footer><div class="wrap">
+  <p><span class="b">Two statuses:</span> <span class="s-test">In testing</span> = we're checking it now, help us try it · <span class="s-ship">Shipped</span> = live for everyone. The small <span class="b">Ref</span> code is just an internal tracking number for the team — you don't need it unless you're testing.</p>
+  <p><span class="b">How this works:</span> every Wednesday we ship the week's changes and this page updates in plain language. Leadership also gets a short email digest that links here. Categories: \U0001F4F1 the customer app · \U0001F310 the website · \U0001F4CA internal staff tools · ⚙️ stock &amp; behind-the-scenes systems.</p>
+  <p style="margin-top:14px;color:#5f7568">Generated {built} · OM-Infra#86</p>
+</div></footer>
+"""
+
+SCRIPT = """<script>
+(function(){
+  var tabs=[].slice.call(document.querySelectorAll('.tab'));
+  var cards=[].slice.call(document.querySelectorAll('.card'));
+  var groups=[].slice.call(document.querySelectorAll('.group'));
+  function apply(f){
+    cards.forEach(function(c){c.style.display=(f==='all'||c.dataset.surface===f)?'':'none';});
+    groups.forEach(function(g){
+      var any=[].slice.call(g.querySelectorAll('.card')).some(function(c){return c.style.display!=='none';});
+      g.style.display=any?'':'none';
+    });
+    tabs.forEach(function(t){t.classList.toggle('active',t.dataset.filter===f);});
+  }
+  tabs.forEach(function(t){t.addEventListener('click',function(){apply(t.dataset.filter);});});
+})();
+</script>
 """
 
 if __name__ == "__main__":
-    out = render()
+    out = build()
     os.makedirs("public", exist_ok=True)
     with open("public/index.html", "w", encoding="utf-8") as f:
         f.write(out)
