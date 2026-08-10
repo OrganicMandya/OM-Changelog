@@ -1,0 +1,63 @@
+name: deploy
+
+# Render public/ from content.json and deploy to OM-owned Cloudflare Pages (project: om-changelog).
+# Replaces GitHub Pages so the changelog runs on the standard OM stack (Cloudflare + Terraform),
+# alongside OM-Insights. The Pages project + custom domain are managed in OM-Infra stacks/om-changelog.
+#
+# NO GitHub-stored Cloudflare secret: the CF API token lives in the OM vault (AWS Secrets Manager,
+# om/cloudflare-api-token) and is read via OIDC — the org-wide reader role github-actions-secrets-reader
+# (trusts repo:OrganicMandya/*) can read om/* secrets. Same integration OM-Infra + OM-Insights use.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 12 * * 3" # Wed 12:00 UTC — release-train day (re-groups entries by date)
+  repository_dispatch:
+    types: [changelog-refresh] # #85 cut-release can refresh the page on a release
+  push:
+    branches: [main]
+    paths: [content.json, generate.py, .github/workflows/deploy.yml]
+
+concurrency:
+  group: deploy-changelog
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write # assume the AWS reader role via OIDC (no stored AWS/CF keys)
+
+jobs:
+  deploy:
+    name: render + deploy → Cloudflare Pages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Render the page from content.json
+        run: python generate.py
+
+      # Reuse the Cloudflare token from the OM vault via OIDC — no GitHub secret. Same reader role +
+      # secret the OM-Infra terraform workflow and OM-Insights deploy use.
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::381492023123:role/github-actions-secrets-reader
+          aws-region: ap-south-1
+
+      - name: Load Cloudflare token from vault
+        run: |
+          TOKEN="$(aws secretsmanager get-secret-value --secret-id om/cloudflare-api-token --query SecretString --output text)"
+          echo "::add-mask::$TOKEN"
+          echo "CLOUDFLARE_API_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+
+      # The project (om-changelog) is created by OM-Infra stacks/om-changelog — apply that first.
+      - name: deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CLOUDFLARE_API_TOKEN }}
+          accountId: e0ca7df3b3d7acdfc0e3056bc441fa33 # OM Cloudflare account — not secret
+          command: pages deploy public --project-name=om-changelog --branch=main
