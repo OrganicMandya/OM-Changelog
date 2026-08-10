@@ -44,8 +44,12 @@ helps; avoid repo/tooling terms. `why` only on high-impact items. `in-testing` =
   (LLM rewrite) for a human to approve — makes the weekly update near-hands-off. Tracked on OM-Infra#86.
 
 ## Hosting
-GitHub Pages (source: GitHub Actions). `build-pages.yml` renders + deploys on **push** to
-`content.json`/`generate.py`, **weekly** (Wed — re-groups by date), and on **dispatch**.
+**Cloudflare Pages** (project `om-changelog`), on the standard OM stack alongside OM-Insights — the
+project + custom domain are Terraform-managed in **OM-Infra `stacks/om-changelog`**. `deploy.yml`
+renders `public/` and `wrangler pages deploy`s it on **push** to `content.json`/`generate.py`,
+**weekly** (Wed — re-groups by date), on **dispatch**, and on the `changelog-refresh`
+repository-dispatch (from the #85 cut-release). The Cloudflare API token comes from the OM vault
+(`om/cloudflare-api-token`) via OIDC — no GitHub secret.
 
 ## Run it locally
 ```bash
@@ -54,6 +58,7 @@ python generate.py    # reads content.json -> writes public/index.html
 ```
 
 ## Owner setup (one-time)
-1. **Rename default branch `master` → `main`** (org-admin) — created via `git init` (default `master`).
-2. **DNS** — GoDaddy CNAME `changelog` → `organicmandya.github.io`.
-3. **Pages custom domain** — Settings → Pages → `changelog.organicmandya.club` (after DNS).
+1. **Apply the Terraform stack** — OM-Infra → `terraform.yml` → `stacks/om-changelog` → plan, then apply
+   (creates the Cloudflare Pages project + registers the custom domain).
+2. **DNS** — GoDaddy CNAME `changelog` → `om-changelog.pages.dev` (the project's `*.pages.dev`; see the
+   stack's `pages_dev_subdomain` output). Cloudflare validates the custom domain once this is live.
