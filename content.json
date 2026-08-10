@@ -1,0 +1,80 @@
+{
+  "_comment": "Curated, plain-language changelog entries (OM-Infra#86). One object per shipped/in-testing change. surface: app|website|staff-tools|stock-platform. status: shipped|in-testing. date: YYYY-MM-DD (merge/ship date; in-testing may use the current week). ref: 'repo#number'. why: optional 'why it matters' line for high-impact items. Newest first within each group. See README for the voice guide.",
+  "entries": [
+    {
+      "surface": "app",
+      "status": "in-testing",
+      "date": "2026-08-05",
+      "title": "Test notifications kept away from real customers",
+      "body": "Making sure any notification sent while we're testing the app never reaches a real customer — the test app and the live app stay fully separate.",
+      "ref": "OM-Mobile-App#133"
+    },
+    {
+      "surface": "app",
+      "status": "in-testing",
+      "date": "2026-08-05",
+      "title": "App building-blocks refreshed",
+      "body": "Swapped two ageing parts of the app for maintained versions. No visible change intended — being checked on real devices before it goes out.",
+      "ref": "OM-Mobile-App#77"
+    },
+    {
+      "surface": "staff-tools",
+      "status": "shipped",
+      "date": "2026-08-06",
+      "title": "Managers now see every ticket on the dashboard",
+      "body": "The Ticket Dashboard was only showing an admin the tickets they'd raised themselves. It now shows the whole team's tickets in one place — the way the shared view was always meant to work.",
+      "why": "Managers get the full picture of what's open across the team, instead of a partial one.",
+      "ref": "OM-Insights#307"
+    },
+    {
+      "surface": "staff-tools",
+      "status": "shipped",
+      "date": "2026-08-05",
+      "title": "Attach any file type in internal support",
+      "body": "Staff can now attach PDFs, Word, Excel and CSV files — not just images — when raising an internal support request.",
+      "ref": "OM-Insights#305"
+    },
+    {
+      "surface": "app",
+      "status": "shipped",
+      "date": "2026-08-04",
+      "title": "A safe test environment for the app is live",
+      "body": "The team can now try app changes on real phones — using a test store and test payments — before a single customer sees them. It installs alongside the real app, so nothing is put at risk.",
+      "why": "The app is ~80% of our orders. Testing safely first means far fewer surprises reaching customers.",
+      "ref": "OM-Mobile-App#60"
+    },
+    {
+      "surface": "app",
+      "status": "shipped",
+      "date": "2026-08-04",
+      "title": "App test builds are ~40% faster",
+      "body": "Cut the time to produce a test build of the app from about 20 minutes to about 12 — so fixes reach the team's phones sooner.",
+      "ref": "OM-Mobile-App#134"
+    },
+    {
+      "surface": "staff-tools",
+      "status": "shipped",
+      "date": "2026-08-03",
+      "title": "New Category Availability Dashboard — live",
+      "body": "Store and category teams can now see product availability across all stores in one place, weighted by revenue, at category.organicmandya.club. Top-75 availability is tracking at ~94%.",
+      "ref": "OM-Category-Dashboard#58"
+    },
+    {
+      "surface": "stock-platform",
+      "status": "shipped",
+      "date": "2026-07-28",
+      "title": "Fixed \"sold out\" showing on items that were actually in stock",
+      "body": "Corrected the stock sync between our systems so in-stock products stop being hidden from customers. Restored availability on hundreds of products.",
+      "why": "Every wrongly-hidden product was a lost sale. This directly protects revenue.",
+      "ref": "odoo-sync#5"
+    },
+    {
+      "surface": "website",
+      "status": "shipped",
+      "date": "2026-07-23",
+      "title": "\"Get the app\" smart link is live",
+      "body": "Visitors to organicmandya.com/pages/app are now sent to the right app store automatically — Android or iPhone — in one tap.",
+      "ref": "om-shopify-theme#45"
+    }
+  ]
+}
