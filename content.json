@@ -171,6 +171,13 @@
       "title": "Wallet history updates instantly after a top-up",
       "body": "After you add money, your recent transactions now refresh on the spot — no more leaving the screen and coming back to see them.",
       "ref": "OM-Mobile-App#230"
+    },
+    {
+      "surface": "stock-platform",
+      "status": "shipped",
+      "date": "2026-06-15",
+      "title": "New engineering foundations — to build faster and safer",
+      "body": "Through June and July we put the groundwork in place behind the scenes: one secure home for every password and key, automatic checks on every change before it can go out, and safe one-click deployments with a quick way to roll back. None of it shows up on a screen, but it's what lets everything below ship quickly without breaking what's already live."
     }
   ]
 }
