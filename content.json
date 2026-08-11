@@ -75,6 +75,109 @@
       "title": "\"Get the app\" smart link is live",
       "body": "Visitors to organicmandya.com/pages/app are now sent to the right app store automatically — Android or iPhone — in one tap.",
       "ref": "om-shopify-theme#45"
+    },
+    {
+      "surface": "stock-platform",
+      "status": "shipped",
+      "date": "2026-07-16",
+      "title": "Combo and bundle products are buyable again",
+      "body": "Multi-item combos were wrongly showing \"sold out\" even when every part was in stock. Their availability is now worked out from their components, so bundles you can actually fulfil show as available.",
+      "ref": "odoo-sync#36"
+    },
+    {
+      "surface": "stock-platform",
+      "status": "shipped",
+      "date": "2026-07-16",
+      "title": "Stock now checks and repairs itself every hour",
+      "body": "The system that decides whether a product shows in stock now reconciles against our live inventory every hour and fills any gaps automatically — so \"sold out\" reflects reality instead of a stale value.",
+      "ref": "odoo-sync#34"
+    },
+    {
+      "surface": "staff-tools",
+      "status": "shipped",
+      "date": "2026-07-21",
+      "title": "Stores hear new orders out loud",
+      "body": "The Store Dashboard now announces each new order aloud, so staff don't miss one during a busy rush.",
+      "ref": "OM-Insights#242"
+    },
+    {
+      "surface": "staff-tools",
+      "status": "shipped",
+      "date": "2026-07-22",
+      "title": "One place to track every support ticket",
+      "body": "A new admin dashboard shows every issue raised across the business with its current status, so nothing slips through the cracks.",
+      "ref": "OM-Insights#235"
+    },
+    {
+      "surface": "stock-platform",
+      "status": "shipped",
+      "date": "2026-07-23",
+      "title": "We stop oversells at checkout",
+      "body": "Checkout now checks live stock for the customer's own area before taking the order, so we don't sell something the nearby store can't actually fulfil.",
+      "ref": "OM-Insights#194"
+    },
+    {
+      "surface": "app",
+      "status": "shipped",
+      "date": "2026-08-04",
+      "title": "Your login is stored more securely",
+      "body": "The app now keeps your sign-in in the phone's secure storage instead of ordinary storage — a safer place for it to live, and it's properly cleared when you log out.",
+      "ref": "OM-Mobile-App#47"
+    },
+    {
+      "surface": "app",
+      "status": "shipped",
+      "date": "2026-08-06",
+      "title": "The app no longer records sensitive details in its logs",
+      "body": "Cleaned up the app's internal diagnostic logs so things like one-time codes, tokens and account details are never written down — even on test builds handed to the team.",
+      "ref": "OM-Mobile-App#56"
+    },
+    {
+      "surface": "staff-tools",
+      "status": "shipped",
+      "date": "2026-08-07",
+      "title": "Staff dashboards refresh faster",
+      "body": "Key store and leadership dashboards now update every 15 minutes instead of every couple of hours, so the numbers you're looking at are fresher.",
+      "ref": "OM-Insights#375"
+    },
+    {
+      "surface": "website",
+      "status": "in-testing",
+      "date": "2026-08-07",
+      "title": "A second way to pay is being tested",
+      "body": "Adding PayU alongside the current card option at checkout, so there's a reliable fallback if one is slow. Being tested on our staging store now.",
+      "ref": "OM-Storefront#294"
+    },
+    {
+      "surface": "app",
+      "status": "shipped",
+      "date": "2026-08-10",
+      "title": "A leaner, better-maintained app",
+      "body": "Removed unused and abandoned code from the app — including three payment kits we never used — for a smaller download, fewer security risks and an app that's easier to keep healthy.",
+      "ref": "OM-Mobile-App#71"
+    },
+    {
+      "surface": "staff-tools",
+      "status": "shipped",
+      "date": "2026-08-11",
+      "title": "Dashboards now check themselves after every update",
+      "body": "After each update, the Category Availability Dashboard automatically confirms everything it needs is actually live — so a broken screen gets caught by us, not by you.",
+      "ref": "OM-Category-Dashboard#152"
+    },
+    {
+      "surface": "app",
+      "status": "shipped",
+      "date": "2026-08-11",
+      "title": "Wallet history updates instantly after a top-up",
+      "body": "After you add money, your recent transactions now refresh on the spot — no more leaving the screen and coming back to see them.",
+      "ref": "OM-Mobile-App#230"
+    },
+    {
+      "surface": "stock-platform",
+      "status": "shipped",
+      "date": "2026-06-15",
+      "title": "New engineering foundations — to build faster and safer",
+      "body": "Through June and July we put the groundwork in place behind the scenes: one secure home for every password and key, automatic checks on every change before it can go out, and safe one-click deployments with a quick way to roll back. None of it shows up on a screen, but it's what lets everything below ship quickly without breaking what's already live."
     }
   ]
 }
