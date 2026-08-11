@@ -184,7 +184,8 @@ BODY = """</head><body>
 <header class="hero"><div class="wrap">
   <div class="brand"><span class="leaf">\U0001F343</span> Organic Mandya</div>
   <h1>What we shipped</h1>
-  <p>A plain-language record of every improvement we make to the app, website, and staff tools — so the whole team and leadership can follow along.</p>
+  <p>A plain-language record of the improvements we make to the app, website, and staff tools — so the whole team and leadership can follow along.</p>
+  <p style="max-width:560px;color:#8fb3a0;font-size:15px;margin:-6px 0 20px">Since June we've shipped <strong style="color:#d7ecdd">600+ improvements</strong> across the app, website, staff tools and stock systems. The updates below are the highlights — the ones you'd actually notice.</p>
   <span class="pill"><span class="dot"></span> Updated every Wednesday</span>
 </div></header>
 

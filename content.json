@@ -178,6 +178,230 @@
       "date": "2026-06-15",
       "title": "New engineering foundations — to build faster and safer",
       "body": "Through June and July we put the groundwork in place behind the scenes: one secure home for every password and key, automatic checks on every change before it can go out, and safe one-click deployments with a quick way to roll back. None of it shows up on a screen, but it's what lets everything below ship quickly without breaking what's already live."
+    },
+    {
+      "surface": "staff-tools",
+      "status": "shipped",
+      "date": "2026-07-10",
+      "title": "Staff can report an issue from inside the tools",
+      "body": "A built-in \"Report an Issue\" form lets any staff member log a problem — with where it happened and a screenshot or video — straight to the team, no email needed.",
+      "ref": "OM-Insights#37"
+    },
+    {
+      "surface": "staff-tools",
+      "status": "shipped",
+      "date": "2026-07-14",
+      "title": "Every reported issue gets a tracking number and live status",
+      "body": "When you report an issue you now get a tracking number, and the form shows its current status and who's on it — so you can see it's being handled.",
+      "ref": "OM-Insights#114"
+    },
+    {
+      "surface": "staff-tools",
+      "status": "shipped",
+      "date": "2026-07-11",
+      "title": "Store and leadership dashboards load faster",
+      "body": "Moved the heaviest sales dashboards onto a quicker data path, so they open in a couple of seconds instead of the long wait they used to have.",
+      "ref": "OM-Insights#95"
+    },
+    {
+      "surface": "staff-tools",
+      "status": "shipped",
+      "date": "2026-07-12",
+      "title": "Dashboards flag a stale number before it reaches a leader",
+      "body": "Added a safeguard that spots when a dashboard's data hasn't refreshed and warns us — so nobody makes a call on yesterday's figure thinking it's today's.",
+      "ref": "OM-Insights#120"
+    },
+    {
+      "surface": "staff-tools",
+      "status": "shipped",
+      "date": "2026-07-13",
+      "title": "Dashboards you've opened before come back instantly",
+      "body": "The staff tools now remember the data you last loaded, so returning to a dashboard shows immediately while fresh numbers load in the background.",
+      "ref": "OM-Insights#160"
+    },
+    {
+      "surface": "staff-tools",
+      "status": "shipped",
+      "date": "2026-07-13",
+      "title": "A health monitor for our automated jobs",
+      "body": "A new admin page watches the behind-the-scenes jobs that keep data flowing and flags any that stop — so a silent failure gets caught early, not days later.",
+      "ref": "OM-Insights#165"
+    },
+    {
+      "surface": "staff-tools",
+      "status": "shipped",
+      "date": "2026-07-22",
+      "title": "Orders now route to the correct store",
+      "body": "Fixed a set of cases where orders were being sent to the wrong store, and pinned down one canonical store list so it stays right.",
+      "ref": "OM-Insights#237"
+    },
+    {
+      "surface": "staff-tools",
+      "status": "shipped",
+      "date": "2026-07-26",
+      "title": "The top-sellers list tells us when it's out of date",
+      "body": "The monthly top-selling-products list now shows a clear warning (and skips its email) if it hasn't refreshed, instead of quietly serving stale data.",
+      "ref": "OM-Insights#291"
+    },
+    {
+      "surface": "staff-tools",
+      "status": "shipped",
+      "date": "2026-07-27",
+      "title": "We now measure lost sales from out-of-stock refunds",
+      "body": "A new metric tracks orders refunded because an item wasn't actually available — turning \"we lost some sales\" into a number we can act on.",
+      "ref": "OM-Insights#270"
+    },
+    {
+      "surface": "staff-tools",
+      "status": "shipped",
+      "date": "2026-07-30",
+      "title": "Sign in to the Category Dashboard with your Microsoft account",
+      "body": "The new availability dashboard uses your existing Microsoft work login, and shows each person only what their role should see.",
+      "ref": "OM-Category-Dashboard#67"
+    },
+    {
+      "surface": "staff-tools",
+      "status": "shipped",
+      "date": "2026-07-30",
+      "title": "Export the availability table to a spreadsheet",
+      "body": "One click downloads the store/SKU availability table as a spreadsheet, so category owners can work the gaps offline.",
+      "ref": "OM-Category-Dashboard#70"
+    },
+    {
+      "surface": "staff-tools",
+      "status": "shipped",
+      "date": "2026-08-10",
+      "title": "See availability trend vs last period and the 90% target",
+      "body": "The dashboard now charts how availability is moving over time against the previous period and the 90% goal — not just today's snapshot.",
+      "ref": "OM-Category-Dashboard#129"
+    },
+    {
+      "surface": "staff-tools",
+      "status": "shipped",
+      "date": "2026-08-10",
+      "title": "Manage dashboard access from a screen",
+      "body": "Admins can now add and change who can see the dashboard from a simple screen, instead of someone running a script behind the scenes.",
+      "ref": "OM-Category-Dashboard#136"
+    },
+    {
+      "surface": "staff-tools",
+      "status": "shipped",
+      "date": "2026-08-10",
+      "title": "Group availability by parent category, with drill-down",
+      "body": "Availability can now be rolled up by parent category and opened up level by level, so you can go from the big picture to a single SKU.",
+      "ref": "OM-Category-Dashboard#144"
+    },
+    {
+      "surface": "app",
+      "status": "shipped",
+      "date": "2026-07-31",
+      "title": "The app only connects over secure links",
+      "body": "Turned off plain, unencrypted connections app-wide, so everything the app sends and receives now travels over a secure channel.",
+      "ref": "OM-Mobile-App#66"
+    },
+    {
+      "surface": "app",
+      "status": "shipped",
+      "date": "2026-08-04",
+      "title": "The app rejects tampered settings",
+      "body": "Added a check that refuses any configuration the app receives if it's been altered or corrupted — a guard against someone slipping in bad settings.",
+      "ref": "OM-Mobile-App#116"
+    },
+    {
+      "surface": "app",
+      "status": "shipped",
+      "date": "2026-08-10",
+      "title": "Logging out now fully clears your session",
+      "body": "Fixed a case where a sign-in detail could linger after logout — logging out now clears it completely, so the next person on the phone starts fresh.",
+      "ref": "OM-Mobile-App#156"
+    },
+    {
+      "surface": "app",
+      "status": "shipped",
+      "date": "2026-08-10",
+      "title": "Co-Op membership join, redesigned",
+      "body": "Rebuilt the Co-Op join screen to the approved design, with a clear add-to-cart step and confirmation, so joining is smoother and easier to follow.",
+      "ref": "OM-Mobile-App#163"
+    },
+    {
+      "surface": "app",
+      "status": "shipped",
+      "date": "2026-08-10",
+      "title": "Sort and filter the product list",
+      "body": "You can now sort and filter within a category in the app, making it quicker to find what you want.",
+      "ref": "OM-Mobile-App#191"
+    },
+    {
+      "surface": "app",
+      "status": "shipped",
+      "date": "2026-08-10",
+      "title": "Safer app releases",
+      "body": "App updates now go out gradually to a small share of users first, so if anything's off we can catch it before it reaches everyone.",
+      "ref": "OM-Mobile-App#183"
+    },
+    {
+      "surface": "app",
+      "status": "in-testing",
+      "date": "2026-08-10",
+      "title": "A refreshed, consistent app look",
+      "body": "Rolling out a shared design system so screens across the app look and behave consistently. Being built and checked in stages.",
+      "ref": "OM-Mobile-App#197"
+    },
+    {
+      "surface": "website",
+      "status": "shipped",
+      "date": "2026-07-30",
+      "title": "Rotating announcements at the top of the site",
+      "body": "The website's top bar now rotates through up to three announcements and shows properly on phones, without the layout jumping.",
+      "ref": "om-shopify-theme#42"
+    },
+    {
+      "surface": "website",
+      "status": "shipped",
+      "date": "2026-07-23",
+      "title": "Cleaner product cards",
+      "body": "Tidied up product cards — no more \"-0%\" badges on full-price items, and consistent image framing across the grid and carousels.",
+      "ref": "om-shopify-theme#38"
+    },
+    {
+      "surface": "website",
+      "status": "shipped",
+      "date": "2026-07-31",
+      "title": "Joining the Co-Op adds to cart with a clear confirmation",
+      "body": "The Co-Op membership buttons on the site now add to your cart and confirm with a small message, then return you where you were.",
+      "ref": "om-shopify-theme#81"
+    },
+    {
+      "surface": "website",
+      "status": "shipped",
+      "date": "2026-08-04",
+      "title": "The website loads lighter",
+      "body": "Removed an unused mapping library that was adding about 254 KB to every page — so the site loads a little faster for everyone.",
+      "ref": "om-shopify-theme#99"
+    },
+    {
+      "surface": "website",
+      "status": "shipped",
+      "date": "2026-08-07",
+      "title": "\"We don't deliver here yet\" now reads differently from \"sold out\"",
+      "body": "On a product page, an item that simply isn't delivered to your area no longer looks the same as one that's out of stock — clearer for shoppers outside our delivery zones.",
+      "ref": "om-shopify-theme#104"
+    },
+    {
+      "surface": "stock-platform",
+      "status": "shipped",
+      "date": "2026-08-06",
+      "title": "A weekly check on catalog accuracy and lost demand",
+      "body": "A read-only audit now reviews the product catalog for mismatches and estimates demand we're losing to stock gaps, per store — so we can fix the biggest ones first.",
+      "ref": "odoo-sync#46"
+    },
+    {
+      "surface": "website",
+      "status": "in-testing",
+      "date": "2026-08-05",
+      "title": "A faster new website, being built behind the scenes",
+      "body": "We're rebuilding organicmandya.com on our own faster foundation, page by page, so we depend less on third-party platforms. It's being built and tested privately — the live site is unchanged for now.",
+      "ref": "OM-Storefront#57"
     }
   ]
 }
