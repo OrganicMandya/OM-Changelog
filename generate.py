@@ -177,6 +177,11 @@ footer .wrap{padding:22px 22px 60px;color:var(--dim);font-size:14px}
 footer p{margin:0 0 10px} footer .b{color:#c3d5c9;font-weight:600}
 .s-test{color:#d7a24b;font-weight:700}.s-ship{color:var(--green);font-weight:700}
 @media(max-width:560px){.hero h1{font-size:40px}.when{display:none}}
+.morewrap{display:flex;justify-content:center;margin:26px 0 8px}
+.showmore{appearance:none;cursor:pointer;font:inherit;font-size:14px;font-weight:600;letter-spacing:.02em;
+  color:#d7ecdd;background:rgba(89,184,119,.08);border:1px solid rgba(89,184,119,.35);border-radius:999px;padding:11px 24px;transition:background .15s,border-color .15s}
+.showmore:hover{background:rgba(89,184,119,.16);border-color:rgba(89,184,119,.6)}
+.showmore:focus-visible{outline:2px solid var(--green);outline-offset:2px}
 </style>
 """
 
@@ -195,6 +200,7 @@ BODY = """</head><body>
 
 <main class="wrap">
 {body}
+<div class="morewrap"><button id="showmore" class="showmore" type="button">Show more</button></div>
 </main>
 
 <footer><div class="wrap">
@@ -206,18 +212,36 @@ BODY = """</head><body>
 
 SCRIPT = """<script>
 (function(){
+  var PAGE=15;                       // how many updates to reveal per "Show more"
   var tabs=[].slice.call(document.querySelectorAll('.tab'));
   var cards=[].slice.call(document.querySelectorAll('.card'));
   var groups=[].slice.call(document.querySelectorAll('.group'));
-  function apply(f){
-    cards.forEach(function(c){c.style.display=(f==='all'||c.dataset.surface===f)?'':'none';});
+  var moreBtn=document.getElementById('showmore');
+  var filter='all', shown=PAGE;
+  function apply(){
+    var matched=0, seen=0;
+    cards.forEach(function(c){
+      var isMatch=(filter==='all'||c.dataset.surface===filter);
+      if(!isMatch){c.style.display='none';return;}
+      matched++;
+      // reveal only the first `shown` matches, in newest-first document order
+      c.style.display=(seen<shown)?'':'none';
+      seen++;
+    });
     groups.forEach(function(g){
       var any=[].slice.call(g.querySelectorAll('.card')).some(function(c){return c.style.display!=='none';});
       g.style.display=any?'':'none';
     });
-    tabs.forEach(function(t){t.classList.toggle('active',t.dataset.filter===f);});
+    tabs.forEach(function(t){t.classList.toggle('active',t.dataset.filter===filter);});
+    var remaining=matched-Math.min(shown,matched);
+    if(moreBtn){
+      moreBtn.style.display=remaining>0?'':'none';
+      moreBtn.textContent='Show '+Math.min(PAGE,remaining)+' more \\u00b7 '+remaining+' left';
+    }
   }
-  tabs.forEach(function(t){t.addEventListener('click',function(){apply(t.dataset.filter);});});
+  tabs.forEach(function(t){t.addEventListener('click',function(){filter=t.dataset.filter;shown=PAGE;apply();});});
+  if(moreBtn){moreBtn.addEventListener('click',function(){shown+=PAGE;apply();});}
+  apply();
 })();
 </script>
 """
