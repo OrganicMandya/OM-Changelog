@@ -1,12 +1,20 @@
 name: deploy
 
-# Render public/ from content.json and deploy to OM-owned Cloudflare Pages (project: om-changelog).
-# Replaces GitHub Pages so the changelog runs on the standard OM stack (Cloudflare + Terraform),
-# alongside OM-Insights. The Pages project + custom domain are managed in OM-Infra stacks/om-changelog.
+# Auto-aggregate the org changelog into customer voice, render public/ from
+# content.json, and deploy to OM-owned Cloudflare Pages (project: om-changelog).
+# Replaces GitHub Pages so the changelog runs on the standard OM stack (Cloudflare
+# + Terraform), alongside OM-Insights. The Pages project + custom domain are
+# managed in OM-Infra stacks/om-changelog.
 #
-# NO GitHub-stored Cloudflare secret: the CF API token lives in the OM vault (AWS Secrets Manager,
-# om/cloudflare-api-token) and is read via OIDC — the org-wide reader role github-actions-secrets-reader
-# (trusts repo:OrganicMandya/*) can read om/* secrets. Same integration OM-Infra + OM-Insights use.
+# aggregate.py (OM-Infra#86) rebuilds content.json from every product repo's
+# changelog.d fragments + releases, rewritten to customer voice by Claude. It is
+# FAIL-OPEN: without om/anthropic-api-key in the vault it leaves content.json
+# untouched, so the page keeps deploying either way. See AGGREGATION.md.
+#
+# NO GitHub-stored secrets: the Cloudflare token, the Anthropic key and the
+# cross-repo GitHub read token all live in the OM vault (AWS Secrets Manager,
+# om/*) and are read via OIDC — the org-wide reader role
+# github-actions-secrets-reader (trusts repo:OrganicMandya/*) can read om/*.
 
 on:
   workflow_dispatch:
@@ -16,7 +24,7 @@ on:
     types: [changelog-refresh] # #85 cut-release can refresh the page on a release
   push:
     branches: [main]
-    paths: [content.json, generate.py, .github/workflows/deploy.yml]
+    paths: [content.json, generate.py, aggregate.py, .github/workflows/deploy.yml]
 
 concurrency:
   group: deploy-changelog
@@ -28,7 +36,7 @@ permissions:
 
 jobs:
   deploy:
-    name: render + deploy → Cloudflare Pages
+    name: aggregate + render + deploy → Cloudflare Pages
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,22 +45,41 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Render the page from content.json
-        run: python generate.py
-
-      # Reuse the Cloudflare token from the OM vault via OIDC — no GitHub secret. Same reader role +
-      # secret the OM-Infra terraform workflow and OM-Insights deploy use.
+      # Reuse the OM vault via OIDC — no GitHub secrets. Same reader role the
+      # OM-Infra terraform workflow and OM-Insights deploy use.
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::381492023123:role/github-actions-secrets-reader
           aws-region: ap-south-1
 
-      - name: Load Cloudflare token from vault
+      - name: Load secrets from vault
         run: |
-          TOKEN="$(aws secretsmanager get-secret-value --secret-id om/cloudflare-api-token --query SecretString --output text)"
-          echo "::add-mask::$TOKEN"
-          echo "CLOUDFLARE_API_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+          CF="$(aws secretsmanager get-secret-value --secret-id om/cloudflare-api-token --query SecretString --output text)"
+          echo "::add-mask::$CF"
+          echo "CLOUDFLARE_API_TOKEN=$CF" >> "$GITHUB_ENV"
+          # Optional — auto-aggregation. Absent until provisioned; never fail the deploy.
+          if AK="$(aws secretsmanager get-secret-value --secret-id om/anthropic-api-key --query SecretString --output text 2>/dev/null)"; then
+            echo "::add-mask::$AK"; echo "ANTHROPIC_API_KEY=$AK" >> "$GITHUB_ENV"
+          else
+            echo "note: om/anthropic-api-key not in vault yet — auto-aggregation inactive (page keeps its curated content.json)."
+          fi
+          if GH="$(aws secretsmanager get-secret-value --secret-id om/github-changelog-reader --query SecretString --output text 2>/dev/null)"; then
+            echo "::add-mask::$GH"; echo "OM_GH_TOKEN=$GH" >> "$GITHUB_ENV"
+          fi
+
+      - name: Install aggregator deps
+        run: pip install --quiet anthropic
+
+      # Rebuild content.json from org changelog fragments + releases (fail-open).
+      # Falls back to the workflow token for public-repo reads if no vault token.
+      - name: Auto-aggregate content.json from org changelog
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python aggregate.py
+
+      - name: Render the page from content.json
+        run: python generate.py
 
       # The project (om-changelog) is created by OM-Infra stacks/om-changelog — apply that first.
       - name: deploy to Cloudflare Pages
