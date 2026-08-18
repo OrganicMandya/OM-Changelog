@@ -19,7 +19,7 @@ name: deploy
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 12 * * 3" # Wed 12:00 UTC — release-train day (re-groups entries by date)
+    - cron: "30 0 * * 1" # Mon 00:30 UTC ≈ 06:00 IST — page is fresh first thing Monday morning
   repository_dispatch:
     types: [changelog-refresh] # #85 cut-release can refresh the page on a release
   push:
