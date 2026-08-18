@@ -38,7 +38,7 @@ helps; avoid repo/tooling terms. `why` only on high-impact items. `in-testing` =
 `shipped` = live. `ref` is `repo#number` (issue or PR) and auto-links.
 
 ### Keeping it fresh
-- **Now (curated):** each Wednesday, edit `content.json` — add the week's changes in plain language, and
+- **Now (curated):** each Monday, edit `content.json` — add the week's changes in plain language, and
   flip items from `in-testing` to `shipped`. Merge → the page rebuilds.
 - **Planned (assisted):** an optional helper that drafts `content.json` entries from the week's merged PRs
   (LLM rewrite) for a human to approve — makes the weekly update near-hands-off. Tracked on OM-Infra#86.
