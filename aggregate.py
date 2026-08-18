@@ -4,20 +4,20 @@
 Zero-touch pipeline: runs in deploy.yml *before* generate.py. It reads the
 human-authored `changelog.d/*.md` fragments each product repo already writes per
 PR (CI-enforced, so nothing extra to do per change) plus published GitHub
-Releases, filters to customer-facing categories, then has Claude rewrite the
-dev-voice bullets into the page's customer voice — constrained to the facts in
+Releases, filters to customer-facing categories, then has an OpenAI model rewrite
+the dev-voice bullets into the page's customer voice — constrained to the facts in
 each source line (it may not invent). The result overwrites content.json.
 
-FAIL-OPEN: if the Anthropic key or a GitHub token is missing, or anything goes
+FAIL-OPEN: if the OpenAI key or a GitHub token is missing, or anything goes
 wrong, we log a notice and leave the existing curated content.json untouched, so
 the page keeps deploying. Auto-aggregation simply activates once the secrets are
 provisioned in the vault (see AGGREGATION.md).
 
 Env:
-  ANTHROPIC_API_KEY  — Claude key (vault: om/anthropic-api-key). Required to run.
-  OM_GH_TOKEN        — GitHub token that can read the source repos' contents +
-                       releases (vault: om/github-changelog-reader). Falls back
-                       to GITHUB_TOKEN (fine for public repos).
+  OPENAI_API_KEY  — OpenAI key (vault: om/openai-api-key). Required to run.
+  OM_GH_TOKEN     — GitHub token that can read the source repos' contents +
+                    releases (vault: om/github-changelog-reader). Falls back
+                    to GITHUB_TOKEN (fine for public repos).
 """
 import json
 import os
@@ -41,15 +41,15 @@ SOURCES = {
 }
 
 # changelog.d categories that are safe to show customers. Everything else
-# (security, docs, deprecated, removed, internal) is dropped before Claude sees
-# it — the audience filter. Widen deliberately.
+# (security, docs, deprecated, removed, internal) is dropped before the model
+# sees it — the audience filter. Widen deliberately.
 PUBLIC_CATEGORIES = {"added", "changed", "fixed"}
 
 # Second, CONTENT-based gate behind the category filter (#9 review, gate 2).
 # The category filter trusts the author's file naming; a sensitive detail
 # mis-filed as added/changed/fixed (e.g. the OTP-leak fix that lived under both
 # Fixed AND Security) would otherwise slip onto a public page. Any keyword hit
-# drops the line outright — before Claude, before publish. Widen deliberately.
+# drops the line outright — before the model, before publish. Widen deliberately.
 SENSITIVE_RE = re.compile(
     r"\b(otp|password|passcode|secret|secrets|token|tokens|api[\s_-]?keys?|"
     r"apikeys?|credentials?|vault|private[\s_-]?key|ssh|cookie|session|redact|"
@@ -62,12 +62,14 @@ SENSITIVE_RE = re.compile(
 # without unbounded history).
 RELEASES_PER_REPO = 3
 
-# Rewrite in batches so one large run can't overflow max_tokens and truncate the
-# JSON — a truncated batch would fail json.loads and (fail-open) leave the page
-# un-updated (#9 review, minor). Each batch stays well under max_tokens.
+# Rewrite in batches so one large run can't overflow the output limit and truncate
+# the JSON — a truncated batch would fail json.loads and (fail-open) leave the page
+# un-updated (#9 review, minor). Each batch stays well within the model's output.
 BATCH_SIZE = 20
 
-MODEL = "claude-opus-4-8"
+# OpenAI model for the rewrite. Cheap + supports Structured Outputs (strict
+# json_schema); bump to gpt-4o / gpt-4.1 for higher-quality wording if wanted.
+MODEL = "gpt-4o-mini"
 # --------------------------------------------------------------------------
 
 _TOKEN = os.environ.get("OM_GH_TOKEN") or os.environ.get("GITHUB_TOKEN") or ""
@@ -192,9 +194,13 @@ HARD RULES:
 - title: <=60 chars, sentence case, the change in customer terms.
 - body: 1-2 short sentences on what it means for them.
 - why: OPTIONAL one line on why it matters — only for clearly high-impact items
-  (revenue, reliability, a visible fix); omit otherwise.
+  (revenue, reliability, a visible fix); use null otherwise.
 """
 
+# OpenAI Structured Outputs (strict) requires EVERY property in `required` and
+# `additionalProperties: false` on every object. `why` is optional in spirit, so
+# it's typed nullable ("string" | null) and the model returns null when it
+# doesn't apply — we drop empty/null whys when building the entry.
 SCHEMA = {
     "type": "object",
     "additionalProperties": False,
@@ -209,9 +215,9 @@ SCHEMA = {
                     "skip": {"type": "boolean"},
                     "title": {"type": "string"},
                     "body": {"type": "string"},
-                    "why": {"type": "string"},
+                    "why": {"type": ["string", "null"]},
                 },
-                "required": ["ref", "skip", "title", "body"],
+                "required": ["ref", "skip", "title", "body", "why"],
             },
         }
     },
@@ -220,30 +226,37 @@ SCHEMA = {
 
 
 def rewrite(raw):
-    """Ask Claude to rewrite each raw line into customer voice. Returns dict by ref.
+    """Ask an OpenAI model to rewrite each raw line into customer voice. Returns dict by ref.
 
-    Batched (BATCH_SIZE) so a large run can't overflow max_tokens and truncate the
-    structured-output JSON — the API call shape is the current structured-outputs
-    contract (output_config.format + a strict json_schema; response parsed from the
-    first text block)."""
-    import anthropic
-    client = anthropic.Anthropic()
+    Batched (BATCH_SIZE) so a large run can't overflow the output limit and truncate
+    the structured-output JSON. Uses OpenAI Structured Outputs (response_format
+    json_schema with strict:true), so the reply is guaranteed to conform to SCHEMA and
+    parses straight from the message content."""
+    from openai import OpenAI
+    client = OpenAI()
     out = {}
     for start in range(0, len(raw), BATCH_SIZE):
         batch = raw[start:start + BATCH_SIZE]
         payload = [{"ref": e["ref"], "surface": e["surface"], "status": e["status"],
                     "source": e["text"]} for e in batch]
-        resp = client.messages.create(
+        resp = client.chat.completions.create(
             model=MODEL,
-            max_tokens=8000,
-            system=VOICE,
-            output_config={"format": {"type": "json_schema", "schema": SCHEMA}},
-            messages=[{"role": "user", "content":
-                       "Rewrite each entry. Return one item per input ref.\n\n"
-                       + json.dumps(payload, ensure_ascii=False, indent=2)}],
+            messages=[
+                {"role": "system", "content": VOICE},
+                {"role": "user", "content":
+                 "Rewrite each entry. Return one item per input ref.\n\n"
+                 + json.dumps(payload, ensure_ascii=False, indent=2)},
+            ],
+            response_format={
+                "type": "json_schema",
+                "json_schema": {"name": "changelog_rewrite",
+                                "strict": True, "schema": SCHEMA},
+            },
         )
-        text = next(b.text for b in resp.content if b.type == "text")
-        for item in json.loads(text).get("items", []):
+        msg = resp.choices[0].message
+        if getattr(msg, "refusal", None) or not msg.content:
+            continue  # model refused / empty — fail-open, skip this batch
+        for item in json.loads(msg.content).get("items", []):
             out[item["ref"]] = item
     return out
 
@@ -252,8 +265,8 @@ def main():
     here = os.path.dirname(os.path.abspath(__file__))
     content_path = os.path.join(here, "content.json")
 
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        print("aggregate: ANTHROPIC_API_KEY not set — leaving content.json as-is "
+    if not os.environ.get("OPENAI_API_KEY"):
+        print("aggregate: OPENAI_API_KEY not set — leaving content.json as-is "
               "(auto-aggregation inactive; see AGGREGATION.md).")
         return 0
     if not _TOKEN:
@@ -276,8 +289,9 @@ def main():
             continue
         entry = {"surface": e["surface"], "status": e["status"], "date": e["date"],
                  "title": r["title"].strip(), "body": r["body"].strip()}
-        if r.get("why", "").strip():
-            entry["why"] = r["why"].strip()
+        why = (r.get("why") or "").strip()
+        if why:
+            entry["why"] = why
         entry["ref"] = e["ref"]
         entries.append(entry)
 
@@ -309,9 +323,9 @@ def main():
     data = {
         "_comment": ("Fresh entries are auto-aggregated from each repo's changelog.d "
                      "fragments + recent releases and rewritten to customer voice by "
-                     "Claude (OM-Infra#86), then MERGED over the committed history "
-                     "here: shipped entries accumulate, in-testing is refreshed each "
-                     "deploy. This committed copy is the historical seed — safe to "
+                     "an OpenAI model (OM-Infra#86), then MERGED over the committed "
+                     "history here: shipped entries accumulate, in-testing is refreshed "
+                     "each deploy. This committed copy is the historical seed — safe to "
                      "curate; to change auto-sourced wording, fix the source fragment."),
         "entries": merged,
     }

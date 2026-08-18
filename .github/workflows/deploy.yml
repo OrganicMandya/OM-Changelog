@@ -7,11 +7,11 @@ name: deploy
 # managed in OM-Infra stacks/om-changelog.
 #
 # aggregate.py (OM-Infra#86) rebuilds content.json from every product repo's
-# changelog.d fragments + releases, rewritten to customer voice by Claude. It is
-# FAIL-OPEN: without om/anthropic-api-key in the vault it leaves content.json
+# changelog.d fragments + releases, rewritten to customer voice by an OpenAI model.
+# It is FAIL-OPEN: without om/openai-api-key in the vault it leaves content.json
 # untouched, so the page keeps deploying either way. See AGGREGATION.md.
 #
-# NO GitHub-stored secrets: the Cloudflare token, the Anthropic key and the
+# NO GitHub-stored secrets: the Cloudflare token, the OpenAI key and the
 # cross-repo GitHub read token all live in the OM vault (AWS Secrets Manager,
 # om/*) and are read via OIDC — the org-wide reader role
 # github-actions-secrets-reader (trusts repo:OrganicMandya/*) can read om/*.
@@ -59,17 +59,17 @@ jobs:
           echo "::add-mask::$CF"
           echo "CLOUDFLARE_API_TOKEN=$CF" >> "$GITHUB_ENV"
           # Optional — auto-aggregation. Absent until provisioned; never fail the deploy.
-          if AK="$(aws secretsmanager get-secret-value --secret-id om/anthropic-api-key --query SecretString --output text 2>/dev/null)"; then
-            echo "::add-mask::$AK"; echo "ANTHROPIC_API_KEY=$AK" >> "$GITHUB_ENV"
+          if AK="$(aws secretsmanager get-secret-value --secret-id om/openai-api-key --query SecretString --output text 2>/dev/null)"; then
+            echo "::add-mask::$AK"; echo "OPENAI_API_KEY=$AK" >> "$GITHUB_ENV"
           else
-            echo "note: om/anthropic-api-key not in vault yet — auto-aggregation inactive (page keeps its curated content.json)."
+            echo "note: om/openai-api-key not in vault yet — auto-aggregation inactive (page keeps its curated content.json)."
           fi
           if GH="$(aws secretsmanager get-secret-value --secret-id om/github-changelog-reader --query SecretString --output text 2>/dev/null)"; then
             echo "::add-mask::$GH"; echo "OM_GH_TOKEN=$GH" >> "$GITHUB_ENV"
           fi
 
       - name: Install aggregator deps
-        run: pip install --quiet anthropic
+        run: pip install --quiet openai
 
       # Rebuild content.json from org changelog fragments + releases (fail-open).
       # Falls back to the workflow token for public-repo reads if no vault token.
