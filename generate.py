@@ -13,6 +13,12 @@ import json, re, html, os, datetime
 
 OWNER = "OrganicMandya"
 
+# The public page must NOT render REF chips: they link to PRIVATE org repos (404
+# for the public) and expose internal repo/ticket structure (#9 review, gate 1).
+# The `ref` stays in content.json for internal tracking + aggregation de-dupe; an
+# internal build can re-enable the chips with SHOW_REFS=1.
+SHOW_REFS = os.environ.get("SHOW_REFS") == "1"
+
 SURFACE = {
     "app":            {"label": "App",              "badge": "APP",              "emoji": "\U0001F4F1", "color": "#59b877"},
     "website":        {"label": "Website",          "badge": "WEBSITE",          "emoji": "\U0001F310", "color": "#5aa0e0"},
@@ -37,6 +43,8 @@ def linkify(s):
     return s
 
 def ref_chip(ref):
+    if not SHOW_REFS:
+        return ""  # public build: never expose private repo/ticket links (gate 1)
     m = re.match(r"([A-Za-z0-9._-]+)#(\d+)", ref or "")
     if not m:
         return ""
