@@ -45,6 +45,19 @@ SOURCES = {
 # it — the audience filter. Widen deliberately.
 PUBLIC_CATEGORIES = {"added", "changed", "fixed"}
 
+# Second, CONTENT-based gate behind the category filter (#9 review, gate 2).
+# The category filter trusts the author's file naming; a sensitive detail
+# mis-filed as added/changed/fixed (e.g. the OTP-leak fix that lived under both
+# Fixed AND Security) would otherwise slip onto a public page. Any keyword hit
+# drops the line outright — before Claude, before publish. Widen deliberately.
+SENSITIVE_RE = re.compile(
+    r"\b(otp|password|passcode|secret|secrets|token|tokens|api[\s_-]?keys?|"
+    r"apikeys?|credentials?|vault|private[\s_-]?key|ssh|cookie|session|redact|"
+    r"pii|gdpr|cve-|vulnerab|exploit|rce|xss|csrf|sql[\s_-]?inject|injection|"
+    r"leak|leaked|breach|malware|razorpay[\s_-]?key|access[\s_-]?token)\b",
+    re.I,
+)
+
 # How many most-recent shipped releases to pull per repo (keeps the page fresh
 # without unbounded history).
 RELEASES_PER_REPO = 3
@@ -120,6 +133,8 @@ def collect():
             text = _first_bullet(body)
             if not text:
                 continue
+            if SENSITIVE_RE.search(text):
+                continue  # security keyword denylist — never publish (gate 2)
             # Fragment mtime ≈ last commit touching it.
             commits = _gh(
                 f"/repos/{OWNER}/{repo}/commits?path=changelog.d/{name}&per_page=1"
@@ -143,6 +158,8 @@ def collect():
                 text = re.sub(r"\s+", " ", _BULLET_RE.sub("", line)).strip()
                 if len(text) < 12:
                     continue
+                if SENSITIVE_RE.search(text):
+                    continue  # security keyword denylist (gate 2)
                 raw.append({"repo": repo, "surface": surface, "status": "shipped",
                             "date": date, "ref": _ref(repo, text), "text": text})
     # Newest first, de-dupe by (ref, status).
