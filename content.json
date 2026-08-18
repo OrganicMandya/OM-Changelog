@@ -4,6 +4,102 @@
     {
       "surface": "app",
       "status": "in-testing",
+      "date": "2026-08-18",
+      "ref": "OM-Mobile-App#347",
+      "title": "Joining the Co-Op now works like a shopping cart",
+      "body": "Pick a membership plan, add it to a cart, and check out — just like your groceries. Your membership is billed on its own and kept clearly separate from your grocery order."
+    },
+    {
+      "surface": "app",
+      "status": "in-testing",
+      "date": "2026-08-18",
+      "ref": "OM-Mobile-App#354",
+      "title": "Category filters that work everywhere",
+      "body": "The Type filter now shows up and works across every category, so you can narrow a list down to exactly what you want."
+    },
+    {
+      "surface": "app",
+      "status": "shipped",
+      "date": "2026-08-17",
+      "ref": "OM-Mobile-App#341",
+      "title": "Cleaner, more useful filters",
+      "body": "Filter groups with nothing to offer are now tidied away, so the filter list shows only what's actually useful for what you're browsing."
+    },
+    {
+      "surface": "app",
+      "status": "shipped",
+      "date": "2026-08-17",
+      "ref": "OM-Mobile-App#321",
+      "title": "See your Co-Op savings right in the cart",
+      "body": "Your cart now shows how much you'd save as a Co-Op member, with a one-tap way to join."
+    },
+    {
+      "surface": "app",
+      "status": "shipped",
+      "date": "2026-08-17",
+      "ref": "OM-Mobile-App#337",
+      "title": "Wallet top-ups open reliably",
+      "body": "Fixed a rare case where adding money to your wallet could get stuck on a loading screen. Top-ups now bring up the payment window promptly, every time."
+    },
+    {
+      "surface": "app",
+      "status": "shipped",
+      "date": "2026-08-17",
+      "ref": "OM-Mobile-App#292",
+      "title": "Your full mobile number is filled in correctly at Co-Op sign-up",
+      "body": "Fixed a bug that could drop the last couple of digits of your phone number. Your complete number is now filled in correctly."
+    },
+    {
+      "surface": "app",
+      "status": "shipped",
+      "date": "2026-08-17",
+      "ref": "OM-Mobile-App#334",
+      "title": "Proudly Powered by Organic Mandya",
+      "body": "Updated the app's branding — you'll now see “Powered by Organic Mandya” in Help & Support."
+    },
+    {
+      "surface": "app",
+      "status": "shipped",
+      "date": "2026-08-16",
+      "ref": "OM-Mobile-App#325",
+      "title": "A steadier wallet when your session expires",
+      "body": "Fixed a crash that could occur in the wallet if your login had quietly expired. It now handles that smoothly instead."
+    },
+    {
+      "surface": "app",
+      "status": "shipped",
+      "date": "2026-08-15",
+      "ref": "OM-Mobile-App#284",
+      "title": "A refreshed Co-Op membership experience",
+      "body": "The Co-Op membership pages have a fresh, full-screen design, and a quick intro now welcomes you when you open the app so joining is easy to find."
+    },
+    {
+      "surface": "app",
+      "status": "shipped",
+      "date": "2026-08-14",
+      "ref": "OM-Mobile-App#309",
+      "title": "Consistent member pricing from cart to checkout",
+      "body": "The Co-Op member price is now worked out in one place, so the price in your cart always matches what you pay at checkout."
+    },
+    {
+      "surface": "app",
+      "status": "shipped",
+      "date": "2026-08-14",
+      "ref": "OM-Mobile-App#315",
+      "title": "You stay signed in across app restarts",
+      "body": "Fixed a startup issue that could sign you out or wrongly say your session expired. You now stay signed in when you reopen the app."
+    },
+    {
+      "surface": "app",
+      "status": "shipped",
+      "date": "2026-08-14",
+      "ref": "OM-Mobile-App#296",
+      "title": "Your saved addresses stay put",
+      "body": "Fixed a case where a slow connection could make it look like you had no saved addresses. Your addresses now show reliably."
+    },
+    {
+      "surface": "app",
+      "status": "in-testing",
       "date": "2026-08-05",
       "title": "Test notifications kept away from real customers",
       "body": "Making sure any notification sent while we're testing the app never reaches a real customer — the test app and the live app stay fully separate.",
