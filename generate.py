@@ -199,7 +199,7 @@ BODY = """</head><body>
   <h1>What we shipped</h1>
   <p>A plain-language record of the improvements we make to the app, website, and staff tools — so the whole team and leadership can follow along.</p>
   <p style="max-width:560px;color:#8fb3a0;font-size:15px;margin:-6px 0 20px">Since June we've shipped <strong style="color:#d7ecdd">600+ improvements</strong> across the app, website, staff tools and stock systems. The updates below are the highlights — the ones you'd actually notice.</p>
-  <span class="pill"><span class="dot"></span> Updated every Wednesday</span>
+  <span class="pill"><span class="dot"></span> Updated every Monday</span>
 </div></header>
 
 <div class="filterbar"><div class="wrap tabs">
@@ -213,7 +213,7 @@ BODY = """</head><body>
 
 <footer><div class="wrap">
   <p><span class="b">Two statuses:</span> <span class="s-test">In testing</span> = we're checking it now, help us try it · <span class="s-ship">Shipped</span> = live for everyone. The small <span class="b">Ref</span> code is just an internal tracking number for the team — you don't need it unless you're testing.</p>
-  <p><span class="b">How this works:</span> every Wednesday we ship the week's changes and this page updates in plain language. Leadership also gets a short email digest that links here. Categories: \U0001F4F1 the customer app · \U0001F310 the website · \U0001F4CA internal staff tools · ⚙️ stock &amp; behind-the-scenes systems.</p>
+  <p><span class="b">How this works:</span> every Monday this page updates with the past week's changes in plain language. Leadership also gets a short email digest that links here. Categories: \U0001F4F1 the customer app · \U0001F310 the website · \U0001F4CA internal staff tools · ⚙️ stock &amp; behind-the-scenes systems.</p>
   <p style="margin-top:14px;color:#5f7568">Generated {built} · OM-Infra#86</p>
 </div></footer>
 """
